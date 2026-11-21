@@ -1,0 +1,27 @@
+name: Package and release
+
+# Release wird ausgelöst, sobald ein Tag im Format v* gepusht wird (z. B. v1.2.1)
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      # CurseForge-API-Token: authors.curseforge.com -> Settings -> API Tokens
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}
+      # Baut zusätzlich ein GitHub-Release (optional, aber praktisch)
+      GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Clone project
+        uses: actions/checkout@v4
+        with:
+          # Volle Git-Historie nötig, damit der Packager Changelogs erzeugen kann
+          fetch-depth: 0
+
+      - name: Package and release
+        uses: BigWigsMods/packager@v2
+        # Game-Version wird automatisch aus "## Interface:" im TOC erkannt.
+        # Projekt-ID kommt aus "## X-Curse-Project-ID:" im TOC (nach Projekt-Anlage auf CurseForge ergänzen).

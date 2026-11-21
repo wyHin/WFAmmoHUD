@@ -1,0 +1,15 @@
+## Interface: 16001
+## AllowLoadGameType: forever
+## Title: WFAmmoHUD
+## Notes: Kleines HUD für deinen Jäger-Munitionsvorrat (Pfeile & Kugeln) – mit Warnton, Chat-Hinweis und blinkendem HUD, wenn der Vorrat zur Neige geht.
+## Author: wyhin
+## Version: 1.2.1
+## IconTexture: Interface\AddOns\WFAmmoHUD\Media\icon
+## SavedVariables: WFAmmoHUDDB
+## AddonCompartmentFunc: WFAmmoHUD_OpenMenu
+## OptionalDeps: NaowhForever, EllesmereUI
+
+Style.lua
+WFAmmoHUD.lua
+Alerts.lua
+Options.lua

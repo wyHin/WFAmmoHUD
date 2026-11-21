@@ -1,0 +1,3 @@
+# Konfiguration für BigWigsMods/packager (https://github.com/BigWigsMods/packager)
+# Ordnername im Zip – muss mit dem .toc-Dateinamen übereinstimmen.
+package-as: WFAmmoHUD
