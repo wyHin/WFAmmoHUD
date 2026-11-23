@@ -8,6 +8,7 @@
 ## SavedVariables: WFAmmoHUDDB
 ## AddonCompartmentFunc: WFAmmoHUD_OpenMenu
 ## OptionalDeps: NaowhForever, EllesmereUI
+## X-Curse-Project-ID: 1820543
 
 Style.lua
 WFAmmoHUD.lua
