@@ -13,8 +13,7 @@
 -- Befehle (Alias: /munition):
 --   /wfhud              Status + Hilfe
 --   /wfhud ein | aus    HUD ein- bzw. ausblenden
---   /wfhud grenz <n>    absolutes Warnminimum (0–500, Standard 50)
---   /wfhud anteil <n>   Warnschwelle in % des Vorrats (0–95, Standard 20)
+--   /wfhud grenz <n>    warnen ab n Schuss (0–3200, Standard 400)
 --   /wfhud groesse <n>  Icon-Größe (24–96, Standard 44)
 --   /wfhud schrift <n>  Schriftgröße (10–36, Standard 16)
 --   /wfhud sound ein|aus  Warnton an/aus
@@ -29,8 +28,7 @@ local DB_NAME = "WFAmmoHUDDB"
 -- ---------- Einstellungen ----------
 local DEFAULTS = {
   enabled   = true,
-  absGrenze = 50,  -- absolutes Warnminimum
-  anteil    = 20,  -- Warnschwelle in % des "vollen" Vorrats
+  warnAb    = 400, -- warnen, sobald der Vorrat auf diesen Wert fällt
   groesse   = 44,  -- Icon-Größe in Pixeln
   schrift   = 16,  -- Schriftgröße der Zahl
   sound     = true,
@@ -63,6 +61,7 @@ local state = "none" -- "ok" | "low" | "empty" | "none"
 local warned = false
 local lastWarnT = -1e9
 local lastCount, lastFull = 0, 0
+local refillAt -- Zeitpunkt, ab dem "aufgefüllt" in den Chat geht (nach dem letzten Kauf)
 local testUntil = -1 -- HUD pulsiert bis zu diesem Zeitpunkt (Testwarnung)
 
 local frame, icon, iconBorder, countText, barBg, barFill, boot
@@ -108,12 +107,10 @@ local function InitDB()
 end
 
 -- ---------- Berechnungen ----------
--- Warnt ab: max(min(absGrenze, voll), anteil% von voll)
+-- Warnt ab einem festen Wert (Menü: Warnung → "Warnen ab", Standard 400).
+-- "full" bleibt als Parameter, damit die Aufrufer unverändert bleiben.
 local function ComputeWarnPoint(full)
-  if not full or full <= 0 then return 0 end
-  local a = math.min(DB.absGrenze, full)
-  local p = math.floor(full * (DB.anteil / 100))
-  return math.max(a, p)
+  return DB.warnAb or DEFAULTS.warnAb
 end
 
 local PROJECTILE_CLASS = (Enum and Enum.ItemClass and Enum.ItemClass.Projectile) or 6
@@ -473,31 +470,45 @@ local function Refresh()
   local name, texture = GetAmmoInfo(id)
   local count = GetAmmoCount(id)
 
-  -- "Voller" Vorrat pro Munitionstyp merken (Nachschub erkennen)
+  -- "Voll" = was nach dem Auffüllen dabei wäre:
+  --   mit Köcher/Munitionsbeutel: aktueller Vorrat + freier Platz im Köcher
+  --     (leere Plätze x Stapelgröße + Rest angebrochener Stapel dieser Sorte)
+  --   ohne Köcher (oder Munition ohne Stapel, z. B. unendliche 1/1-Pfeile):
+  --     gemerkter Höchststand dieser Sorte
   local full = 0
   local hasBag, bagFull, room = false, false, 0
   if id then hasBag, bagFull, room = GetQuiverState(id) end
   if id then
+    -- Höchststand weiter merken (Rückfall ohne Köcher, bekannte Sorten)
     local oldFull = DB.fullByItem[id]
-    if not oldFull or count > oldFull then
-      if oldFull and oldFull > 0 and curItemId == id then
-        if ns.ShowTimedAlert then
-          ns.ShowTimedAlert("info", bagFull and "Köcher voll" or "Vorrat aufgefüllt",
-            ("%d %s"):format(count, name or "Munition"), 5)
-        end
-        if DB.chatWarnung then
-          Print(("Vorrat aufgefüllt: jetzt %d %s."):format(count, name or ""))
-        end
-      end
-      DB.fullByItem[id] = count
+    if not oldFull or count > oldFull then DB.fullByItem[id] = count end
+    if hasBag and (MaxStack(id) or 0) > 1 then
+      full = count + (room or 0)
+    else
+      full = DB.fullByItem[id] or 0
     end
-    full = DB.fullByItem[id] or 0
+
+    -- Nachschub erkennen: Vorrat derselben Sorte ist gestiegen
+    if curItemId == id and lastCount > 0 and count > lastCount then
+      if ns.ShowTimedAlert then
+        ns.ShowTimedAlert("info", bagFull and "Köcher voll" or "Vorrat aufgefüllt",
+          ("%d / %d %s"):format(count, math.max(full, count), name or "Munition"), 5)
+      end
+      refillAt = GetTime() + 3 -- Chat erst, wenn 3 s nichts mehr dazukam
+    end
   end
   if full < count then full = count end
+  if refillAt and GetTime() >= refillAt then
+    refillAt = nil
+    if DB.chatWarnung and id then
+      Print(("Vorrat aufgefüllt: jetzt %d / %d %s."):format(count, full, name or ""))
+    end
+  end
 
   if curItemId ~= id then
     curItemId = id
     warned = false
+    refillAt = nil
   end
 
   lastCount, lastFull = count, full
@@ -533,6 +544,7 @@ local function Refresh()
 
   -- Meldung im Meldungsbereich (Warnung bzw. Vorrat im Ruhebereich)
   -- "voll": Köcher/Beutel randvoll; ohne Köcher: Vorrat wieder auf dem gemerkten Höchststand
+  -- (mit Köcher gilt count >= full automatisch genau dann, wenn kein Platz mehr frei ist)
   local isFull
   if hasBag then isFull = bagFull else isFull = id ~= nil and count >= full end
   if ns.UpdateAlert then ns.UpdateAlert(state, count, full, name, isFull, hasBag and room or nil) end
@@ -834,8 +846,7 @@ local function ShowHelp()
   DEFAULT_CHAT_FRAME:AddMessage("  /wfhud raid          – Raid-Check (Vorrat für den Raid prüfen)")
   DEFAULT_CHAT_FRAME:AddMessage("  /wfhud debug         – Diagnose der Munitionserkennung")
   DEFAULT_CHAT_FRAME:AddMessage("  /wfhud ein | aus      – HUD ein/aus")
-  DEFAULT_CHAT_FRAME:AddMessage("  /wfhud grenz <n>     – absolutes Warnminimum (Std. 50)")
-  DEFAULT_CHAT_FRAME:AddMessage("  /wfhud anteil <n>    – Warnschwelle in % des Vorrats (Std. 20)")
+  DEFAULT_CHAT_FRAME:AddMessage("  /wfhud grenz <n>     – warnen ab n Schuss (Std. 400)")
   DEFAULT_CHAT_FRAME:AddMessage("  /wfhud groesse <n>   – Icon-Größe 24–96 (Std. 44)")
   DEFAULT_CHAT_FRAME:AddMessage("  /wfhud schrift <n>   – Schriftgröße 10–36 (Std. 16)")
   DEFAULT_CHAT_FRAME:AddMessage("  /wfhud sound ein|aus – Warnton an/aus")
@@ -942,21 +953,12 @@ SlashCmdList.WFAMMOHUD = function(msg)
     Print("HUD ausgeblendet.")
   elseif cmd == "grenz" or cmd == "grenze" or cmd == "abs" then
     local n = tonumber(arg1)
-    if n and n >= 0 and n <= 500 then
-      DB.absGrenze = math.floor(n)
+    if n and n >= 0 and n <= 3200 then
+      DB.warnAb = math.floor(n)
       SafeRefresh()
-      Print(("Absoluter Grenzwert auf %d gesetzt."):format(DB.absGrenze))
+      Print(("Warnung ab %d Schuss."):format(DB.warnAb))
     else
-      Print("So: /wfhud grenz 30 (Zahl von 0–500)")
-    end
-  elseif cmd == "anteil" or cmd == "prozent" or cmd == "p" then
-    local n = tonumber(arg1)
-    if n and n >= 0 and n <= 95 then
-      DB.anteil = math.floor(n)
-      SafeRefresh()
-      Print(("Warnschwelle auf %d %% des Vorrats gesetzt."):format(DB.anteil))
-    else
-      Print("So: /wfhud anteil 20 (Zahl von 0–95)")
+      Print("So: /wfhud grenz 400 (Zahl von 0–3200)")
     end
   elseif cmd == "groesse" or cmd == "größe" or cmd == "große" or cmd == "size" then
     local n = tonumber(arg1)

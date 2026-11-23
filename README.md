@@ -9,8 +9,10 @@ Kleines HUD für **Jäger in World of Warcraft: Forever** – zeigt deinen Munit
 - **Warnung**, wenn der Vorrat knapp wird: pulsierendes HUD, Warnton und eine Meldung im
   Meldungsbereich von Naowh Forever (siehe *Meldungen*). Der Ton kommt alle 2 Minuten erneut,
   solange der Vorrat knapp ist.
-- Merkt sich pro Munitionstyp, wie „voll" dein Vorrat war (auch über `/reload`
-  und Neustarts hinweg) – Nachschub wird automatisch erkannt und die Warnung zurückgesetzt.
+- **„Voll“ richtet sich nach deinem Köcher/Munitionsbeutel:** aktueller Vorrat + freier Platz darin
+  (leere Plätze × Stapelgröße + Rest angebrochener Stapel). Ohne Köcher gilt der gemerkte Höchststand
+  pro Munitionstyp (auch über `/reload` und Neustarts hinweg). Nachschub wird automatisch erkannt
+  und die Warnung zurückgesetzt.
 - Tooltip über dem HUD zeigt Details (Vorrat, Schwelle, Item-Info).
 - **Munitionswechsel:** Hast du weitere Pfeil- oder Kugelsorten dabei (z. B. Gefiederte Pfeile), erscheinen sie
   als kleine Symbole unter dem HUD – bessere Munition zuerst, passend zur Waffe (Bogen/Armbrust → Pfeile,
@@ -18,13 +20,9 @@ Kleines HUD für **Jäger in World of Warcraft: Forever** – zeigt deinen Munit
   wo die Leiste steht, wird nur außerhalb des Kampfes aktualisiert (Client-Regel); im Kampf zählen nur die Zahlen mit.
 
 ## Wie die Warnung funktioniert
-Das HUD warnt, wenn dein Bestand ≤ `max(min(Grenzwert, Voll), Anteil % von Voll)` ist:
-
-| Vorrat | Grenzwert (Std. 50) | Anteil (Std. 20 %) | Warnt ab |
-|--------|--------------------|--------------------|----------|
-| 150 Pfeile | 50 | 30 | **50** |
-| 100 Pfeile | 50 | 20 | **50** |
-| 30 Pfeile  | 30 | 6  | **30** (also: direkt, wenn es weggeht) |
+Das HUD warnt, sobald dein Bestand auf den eingestellten Wert fällt – Standard **400 Schuss**,
+im Menü (Seite *Warnung* → „Warnen ab“) oder per `/wfhud grenz <n>` frei einstellbar (0–3200).
+Die Köchergröße spielt dafür keine Rolle; sie bestimmt nur, was als „voll“ gilt (Balken, Meldungen).
 
 Solange du gar nichts schießt (oder deine Pfeile im Client nicht verbraucht werden),
 warn es nicht – es erkennt nur echten Verbrauch.
@@ -53,7 +51,7 @@ Was angezeigt wird:
 - **Im Ruhebereich** (Gasthaus, Hauptstadt, außerhalb des Kampfes): dein aktueller Vorrat und wie viel
   noch in den Köcher passt. Ist der **Köcher/Munitionsbeutel voll** (alle Plätze mit vollen Stapeln),
   verschwindet die Meldung. Ohne Köcher gilt „voll“, sobald der Vorrat wieder den gemerkten Höchststand erreicht.
-- **Vorrat aufgefüllt** bzw. **Köcher voll** – ein paar Sekunden nach dem Nachkaufen.
+- **Vorrat aufgefüllt** bzw. **Köcher voll** – beim Nachkaufen, mit Vorrat / Köcherkapazität.
 - **Raid-Check** – wenn du einem Raid beitrittst (oder deine Gruppe zum Raid wird) und beim Betreten einer
   Raid-Instanz: Vorrat gegen den empfohlenen Mindestbedarf. Akzentfarbe „reicht“, orange „zu wenig“, rot unter der Hälfte.
   Bleibt 60 Sekunden stehen (einstellbar 10–300).
@@ -65,6 +63,9 @@ Richtwerte (Classic-Mechanik, Stapel 200, ca. 28–32 Schuss pro Minute im Kampf
 | 20er (ZG, AQ20) | **1600** (8 Stapel) |
 | 40er (MC, BWL, AQ40, Naxx) | **3200** (voller 16er-Köcher), komfortabel 4000 |
 
+Die Werte sind voreingestellt und im Menü (Seite *Raid*) frei änderbar;
+„Empfohlene Werte – Übernehmen“ setzt sie auf 1600 / 3200 zurück.
+
 Quellen: Warcraft Tavern (Forever-Jäger-Guide, Munition & Köcher), warcraft.wiki.gg „Ammo“, Blizzard-Forum.
 
 ## Einstellungsmenü
@@ -72,7 +73,7 @@ Quellen: Warcraft Tavern (Forever-Jäger-Guide, Munition & Köcher), warcraft.wi
 über das Addon-Menü an der Minimap oder unter *Optionen → AddOns → WFAmmoHUD*.
 
 - **HUD:** HUD an/aus, Icon-Größe, Schriftgröße (Schieberegler oder Zahl eintippen), andere Munition anzeigen, Position zurücksetzen
-- **Warnung:** absoluter Grenzwert, Anteil vom Vorrat, aktueller Vorrat und Warnpunkt, sowie
+- **Warnung:** „Warnen ab“ (Standard 400), aktueller Vorrat und Warnpunkt, sowie
   - *Im Meldungsbereich* (an): Warnungen erscheinen als Meldung statt im Chat
   - *Vorrat im Ruhebereich* (an): im Gasthaus / in der Stadt zeigt die Meldung, wie viel Munition du hast
   - *Zusätzlich im Chat* (aus) und *Warnton* (an)
@@ -98,8 +99,7 @@ Quellen: Warcraft Tavern (Forever-Jäger-Guide, Munition & Köcher), warcraft.wi
 | `/wfhud raid` | Raid-Check jetzt ausführen |
 | `/wfhud debug` | Diagnose der Munitionserkennung (Slot, Taschen, Ergebnis) |
 | `/wfhud ein` / `aus` | HUD ein- bzw. ausblenden |
-| `/wfhud grenz <n>` | absolutes Warnminimum, 0–500 (Standard 50) |
-| `/wfhud anteil <n>` | Warnschwelle in % des Vorrats, 0–95 (Standard 20) |
+| `/wfhud grenz <n>` | warnen ab n Schuss, 0–3200 (Standard 400) |
 | `/wfhud groesse <n>` | Icon-Größe 24–96 (Standard 44) |
 | `/wfhud schrift <n>` | Schriftgröße der Zahl 10–36 (Standard 16) |
 | `/wfhud sound ein` / `aus` | Warnton an/aus |

@@ -3,7 +3,7 @@
 ## Title: WFAmmoHUD
 ## Notes: Kleines HUD für deinen Jäger-Munitionsvorrat (Pfeile & Kugeln) – mit Warnton, Chat-Hinweis und blinkendem HUD, wenn der Vorrat zur Neige geht.
 ## Author: wyhin
-## Version: 1.2.1
+## Version: 1.3.0
 ## IconTexture: Interface\AddOns\WFAmmoHUD\Media\icon
 ## SavedVariables: WFAmmoHUDDB
 ## AddonCompartmentFunc: WFAmmoHUD_OpenMenu

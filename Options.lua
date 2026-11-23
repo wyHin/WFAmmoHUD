@@ -433,7 +433,7 @@ function BuildMenu(startPage)
   local close = FlatButton(header, "X", 24, 22, function() menu:Hide() end)
   close:SetPoint("RIGHT", -10, 0)
   local defaults = FlatButton(header, "Standardwerte", 110, 22, function()
-    for _, key in ipairs({ "absGrenze", "anteil", "groesse", "schrift", "sound",
+    for _, key in ipairs({ "warnAb", "groesse", "schrift", "sound",
                            "meldungen", "ruheInfo", "chatWarnung", "ammoWahl",
                            "raidCheck", "raidDauer", "raidBedarf20", "raidBedarf40" }) do
       DB[key] = ns.DEFAULTS[key]
@@ -490,13 +490,11 @@ function BuildMenu(startPage)
   local warn = NewPage(body, "Warnung", "Warnung",
     "Wann und wo vor knapper Munition gewarnt wird.")
   warn:Section("SCHWELLE")
-  warn:Row("Absoluter Grenzwert", Slider(warn.card, 0, 500, 1,
-    function() return DB.absGrenze end,
-    function(n) DB.absGrenze = n; ns.Refresh() end))
-  warn:Row("Anteil vom Vorrat (%)", Slider(warn.card, 0, 95, 1,
-    function() return DB.anteil end,
-    function(n) DB.anteil = n; ns.Refresh() end))
-  warn:Note("Warnt ab: max(min(Grenzwert, voll), Anteil % von voll)")
+  warn:Row("Warnen ab (Schuss)", Slider(warn.card, 0, 3200, 10,
+    function() return DB.warnAb end,
+    function(n) DB.warnAb = n; ns.Refresh() end))
+  warn:Note("Warnt, sobald der Vorrat auf diesen Wert fällt (Standard 400).")
+  warn:Note("„Voll“ (Balken) = Vorrat + freier Platz im Köcher/Munitionsbeutel.")
 
   warn:Section("AKTUELL")
   local status = CreateFrame("Frame", nil, warn.card)
@@ -551,6 +549,12 @@ function BuildMenu(startPage)
     function() return DB.raidBedarf40 end,
     function(n) DB.raidBedarf40 = n end))
   raid:Note("20er: ZG, AQ20 (8 Stapel)  ·  40er: MC, BWL, AQ40, Naxx (voller 16er-Köcher)")
+  raid:Row("Empfohlene Werte", FlatButton(raid.card, "Übernehmen", 110, 22, function()
+    DB.raidBedarf20 = ns.DEFAULTS.raidBedarf20
+    DB.raidBedarf40 = ns.DEFAULTS.raidBedarf40
+    if raid:IsShown() then raid:GetScript("OnShow")(raid) end
+    ns.Print(("Raid-Richtwerte: 20er %d, 40er %d."):format(DB.raidBedarf20, DB.raidBedarf40))
+  end))
   raid:Section("TEST")
   raid:Row("Raid-Check jetzt ausführen", FlatButton(raid.card, "Prüfen", 110, 22, function()
     ns.RaidCheck(true)
